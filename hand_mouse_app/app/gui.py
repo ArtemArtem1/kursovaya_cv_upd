@@ -150,6 +150,36 @@ class MainWindow(QMainWindow):
 
         settings_layout.addRow("Порог клика:", click_row)
 
+        # Горизонтальная граница активной области
+        self.margin_x_slider = QSlider(Qt.Horizontal)
+        self.margin_x_slider.setMinimum(0)
+        self.margin_x_slider.setMaximum(250)
+        self.margin_x_slider.setValue(self.config.frame_margin_x)
+        self.margin_x_slider.valueChanged.connect(self.change_margin_x)
+
+        self.margin_x_label = QLabel(str(self.config.frame_margin_x))
+
+        margin_x_row = QHBoxLayout()
+        margin_x_row.addWidget(self.margin_x_slider)
+        margin_x_row.addWidget(self.margin_x_label)
+
+        settings_layout.addRow("Граница X:", margin_x_row)
+
+        # Вертикальная граница активной области
+        self.margin_y_slider = QSlider(Qt.Horizontal)
+        self.margin_y_slider.setMinimum(0)
+        self.margin_y_slider.setMaximum(200)
+        self.margin_y_slider.setValue(self.config.frame_margin_y)
+        self.margin_y_slider.valueChanged.connect(self.change_margin_y)
+
+        self.margin_y_label = QLabel(str(self.config.frame_margin_y))
+
+        margin_y_row = QHBoxLayout()
+        margin_y_row.addWidget(self.margin_y_slider)
+        margin_y_row.addWidget(self.margin_y_label)
+
+        settings_layout.addRow("Граница Y:", margin_y_row)
+
         settings_group.setLayout(settings_layout)
         control_panel.addWidget(settings_group)
 
@@ -238,6 +268,14 @@ class MainWindow(QMainWindow):
             self.camera_worker.gesture_detector.update_settings(
                 click_distance=value
             )
+
+    def change_margin_x(self, value):
+        self.config.frame_margin_x = value
+        self.margin_x_label.setText(str(value))
+
+    def change_margin_y(self, value):
+        self.config.frame_margin_y = value
+        self.margin_y_label.setText(str(value))
 
     def closeEvent(self, event):
         self.stop_camera()

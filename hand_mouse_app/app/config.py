@@ -17,3 +17,7 @@ class AppConfig:
 
         # Задержка между кликами в кадрах
         self.click_cooldown_frames = 15
+
+        self.frame_margin_x = 100
+
+        self.frame_margin_y = 80

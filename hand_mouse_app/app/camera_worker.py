@@ -53,6 +53,20 @@ class CameraWorker(QThread):
 
             frame_height, frame_width, _ = frame.shape
 
+            # Рисуем активную область управления
+            left = self.config.frame_margin_x
+            right = frame_width - self.config.frame_margin_x
+            top = self.config.frame_margin_y
+            bottom = frame_height - self.config.frame_margin_y
+
+            cv2.rectangle(
+                frame,
+                (left, top),
+                (right, bottom),
+                (255, 0, 0),
+                2
+            )
+
             frame, landmarks = self.hand_tracker.find_hand_landmarks(frame)
 
             gesture = self.gesture_detector.detect(landmarks)
@@ -72,7 +86,9 @@ class CameraWorker(QThread):
                         frame_width=frame_width,
                         frame_height=frame_height,
                         sensitivity=self.config.sensitivity,
-                        smoothing=self.config.smoothing
+                        smoothing=self.config.smoothing,
+                        margin_x=self.config.frame_margin_x,
+                        margin_y=self.config.frame_margin_y
                     )
 
             elif mode == "LEFT_CLICK":

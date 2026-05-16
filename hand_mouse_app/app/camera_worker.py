@@ -26,7 +26,8 @@ class CameraWorker(QThread):
         self.hand_tracker = HandTracker()
         self.gesture_detector = GestureDetector(
             click_distance=self.config.click_distance,
-            click_cooldown_frames=self.config.click_cooldown_frames
+            click_cooldown_frames=self.config.click_cooldown_frames,
+            left_hold_time=self.config.left_hold_time
         )
         self.mouse_controller = MouseController()
 
@@ -94,8 +95,64 @@ class CameraWorker(QThread):
             elif mode == "LEFT_CLICK":
                 self.status_changed.emit("Режим: левый клик")
 
-                if self.config.mouse_enabled:
+                if self.config.mouse_enabled and self.config.left_click_enabled:
                     self.mouse_controller.left_click()
+
+            elif mode == "LEFT_HOLD_START":
+                self.status_changed.emit("Режим: зажатие левой кнопки")
+
+                if self.config.mouse_enabled and self.config.left_click_enabled and index_pos is not None:
+                    x, y = index_pos
+
+                    self.mouse_controller.move_cursor(
+                        finger_x=x,
+                        finger_y=y,
+                        frame_width=frame_width,
+                        frame_height=frame_height,
+                        sensitivity=self.config.sensitivity,
+                        smoothing=self.config.smoothing,
+                        margin_x=self.config.frame_margin_x,
+                        margin_y=self.config.frame_margin_y
+                    )
+
+                    self.mouse_controller.left_down()
+
+            elif mode == "LEFT_HOLD_MOVE":
+                self.status_changed.emit("Режим: перетаскивание")
+
+                if self.config.mouse_enabled and self.config.left_click_enabled and index_pos is not None:
+                    x, y = index_pos
+
+                    self.mouse_controller.move_cursor(
+                        finger_x=x,
+                        finger_y=y,
+                        frame_width=frame_width,
+                        frame_height=frame_height,
+                        sensitivity=self.config.sensitivity,
+                        smoothing=self.config.smoothing,
+                        margin_x=self.config.frame_margin_x,
+                        margin_y=self.config.frame_margin_y
+                    )
+
+            elif mode == "LEFT_HOLD_END":
+                self.status_changed.emit("Режим: левая кнопка отпущена")
+
+                if self.config.mouse_enabled and self.config.left_click_enabled:
+                    self.mouse_controller.left_up()
+
+            elif mode == "RIGHT_CLICK":
+                self.status_changed.emit("Режим: правый клик")
+
+                if self.config.mouse_enabled and self.config.right_click_enabled:
+                    self.mouse_controller.right_click()
+
+            elif mode == "SCROLL":
+                self.status_changed.emit("Режим: прокрутка")
+
+                scroll_amount = gesture["scroll_amount"]
+
+                if self.config.mouse_enabled and self.config.scroll_enabled and scroll_amount != 0:
+                    self.mouse_controller.scroll(scroll_amount)
 
             else:
                 self.status_changed.emit("Режим: рука не найдена")
@@ -132,4 +189,8 @@ class CameraWorker(QThread):
 
     def stop(self):
         self.running = False
+
+        # На случай если пользователь остановил камеру во время зажатия
+        self.mouse_controller.left_up()
+
         self.wait()

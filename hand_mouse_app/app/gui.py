@@ -9,14 +9,177 @@ from PySide6.QtWidgets import (
     QSlider,
     QSpinBox,
     QGroupBox,
-    QFormLayout
+    QFormLayout,
+    QDialog,
+    QDialogButtonBox
 )
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 
-from .config import AppConfig
-from .camera_worker import CameraWorker
+from app.config import AppConfig
+from app.camera_worker import CameraWorker
+
+
+class SettingsDialog(QDialog):
+    """
+    Окно настроек приложения.
+    """
+
+    def __init__(self, config, camera_worker=None, parent=None):
+        super().__init__(parent)
+
+        self.config = config
+        self.camera_worker = camera_worker
+
+        self.setWindowTitle("Настройки")
+        self.setMinimumWidth(450)
+
+        self.init_ui()
+
+    def init_ui(self):
+        main_layout = QVBoxLayout()
+
+        # Жесты
+        gestures_group = QGroupBox("Жесты")
+        gestures_layout = QVBoxLayout()
+
+        self.left_click_checkbox = QCheckBox("Левый клик")
+        self.left_click_checkbox.setChecked(self.config.left_click_enabled)
+        self.left_click_checkbox.stateChanged.connect(self.toggle_left_click)
+
+        self.right_click_checkbox = QCheckBox("Правый клик")
+        self.right_click_checkbox.setChecked(self.config.right_click_enabled)
+        self.right_click_checkbox.stateChanged.connect(self.toggle_right_click)
+
+        self.scroll_checkbox = QCheckBox("Прокрутка колесиком")
+        self.scroll_checkbox.setChecked(self.config.scroll_enabled)
+        self.scroll_checkbox.stateChanged.connect(self.toggle_scroll)
+
+        gestures_layout.addWidget(self.left_click_checkbox)
+        gestures_layout.addWidget(self.right_click_checkbox)
+        gestures_layout.addWidget(self.scroll_checkbox)
+
+        gestures_group.setLayout(gestures_layout)
+        main_layout.addWidget(gestures_group)
+
+        # Настройки управления
+        settings_group = QGroupBox("Параметры управления")
+        settings_layout = QFormLayout()
+
+        self.sensitivity_slider = QSlider(Qt.Horizontal)
+        self.sensitivity_slider.setMinimum(1)
+        self.sensitivity_slider.setMaximum(20)
+        self.sensitivity_slider.setValue(int(self.config.sensitivity * 10))
+        self.sensitivity_slider.valueChanged.connect(self.change_sensitivity)
+
+        self.sensitivity_label = QLabel(str(self.config.sensitivity))
+
+        sensitivity_row = QHBoxLayout()
+        sensitivity_row.addWidget(self.sensitivity_slider)
+        sensitivity_row.addWidget(self.sensitivity_label)
+
+        settings_layout.addRow("Чувствительность:", sensitivity_row)
+
+        self.smoothing_slider = QSlider(Qt.Horizontal)
+        self.smoothing_slider.setMinimum(1)
+        self.smoothing_slider.setMaximum(15)
+        self.smoothing_slider.setValue(self.config.smoothing)
+        self.smoothing_slider.valueChanged.connect(self.change_smoothing)
+
+        self.smoothing_label = QLabel(str(self.config.smoothing))
+
+        smoothing_row = QHBoxLayout()
+        smoothing_row.addWidget(self.smoothing_slider)
+        smoothing_row.addWidget(self.smoothing_label)
+
+        settings_layout.addRow("Сглаживание:", smoothing_row)
+
+        self.click_distance_slider = QSlider(Qt.Horizontal)
+        self.click_distance_slider.setMinimum(10)
+        self.click_distance_slider.setMaximum(80)
+        self.click_distance_slider.setValue(self.config.click_distance)
+        self.click_distance_slider.valueChanged.connect(self.change_click_distance)
+
+        self.click_distance_label = QLabel(str(self.config.click_distance))
+
+        click_row = QHBoxLayout()
+        click_row.addWidget(self.click_distance_slider)
+        click_row.addWidget(self.click_distance_label)
+
+        settings_layout.addRow("Порог клика:", click_row)
+
+        self.margin_x_slider = QSlider(Qt.Horizontal)
+        self.margin_x_slider.setMinimum(0)
+        self.margin_x_slider.setMaximum(250)
+        self.margin_x_slider.setValue(self.config.frame_margin_x)
+        self.margin_x_slider.valueChanged.connect(self.change_margin_x)
+
+        self.margin_x_label = QLabel(str(self.config.frame_margin_x))
+
+        margin_x_row = QHBoxLayout()
+        margin_x_row.addWidget(self.margin_x_slider)
+        margin_x_row.addWidget(self.margin_x_label)
+
+        settings_layout.addRow("Граница X:", margin_x_row)
+
+        self.margin_y_slider = QSlider(Qt.Horizontal)
+        self.margin_y_slider.setMinimum(0)
+        self.margin_y_slider.setMaximum(200)
+        self.margin_y_slider.setValue(self.config.frame_margin_y)
+        self.margin_y_slider.valueChanged.connect(self.change_margin_y)
+
+        self.margin_y_label = QLabel(str(self.config.frame_margin_y))
+
+        margin_y_row = QHBoxLayout()
+        margin_y_row.addWidget(self.margin_y_slider)
+        margin_y_row.addWidget(self.margin_y_label)
+
+        settings_layout.addRow("Граница Y:", margin_y_row)
+
+        settings_group.setLayout(settings_layout)
+        main_layout.addWidget(settings_group)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Close)
+        button_box.rejected.connect(self.close)
+
+        main_layout.addWidget(button_box)
+
+        self.setLayout(main_layout)
+
+    def toggle_left_click(self, state):
+        self.config.left_click_enabled = state == Qt.Checked.value
+
+    def toggle_right_click(self, state):
+        self.config.right_click_enabled = state == Qt.Checked.value
+
+    def toggle_scroll(self, state):
+        self.config.scroll_enabled = state == Qt.Checked.value
+
+    def change_sensitivity(self, value):
+        self.config.sensitivity = value / 10
+        self.sensitivity_label.setText(str(self.config.sensitivity))
+
+    def change_smoothing(self, value):
+        self.config.smoothing = value
+        self.smoothing_label.setText(str(value))
+
+    def change_click_distance(self, value):
+        self.config.click_distance = value
+        self.click_distance_label.setText(str(value))
+
+        if self.camera_worker is not None:
+            self.camera_worker.gesture_detector.update_settings(
+                click_distance=value
+            )
+
+    def change_margin_x(self, value):
+        self.config.frame_margin_x = value
+        self.margin_x_label.setText(str(value))
+
+    def change_margin_y(self, value):
+        self.config.frame_margin_y = value
+        self.margin_y_label.setText(str(value))
 
 
 class MainWindow(QMainWindow):
@@ -92,96 +255,21 @@ class MainWindow(QMainWindow):
         control_panel.addWidget(camera_group)
 
         # Управление мышью
-        mouse_group = QGroupBox("Управление мышью")
+        mouse_group = QGroupBox("Управление")
         mouse_layout = QVBoxLayout()
 
         self.mouse_checkbox = QCheckBox("Включить управление курсором")
         self.mouse_checkbox.setChecked(self.config.mouse_enabled)
         self.mouse_checkbox.stateChanged.connect(self.toggle_mouse_control)
 
+        self.settings_button = QPushButton("Настройки")
+        self.settings_button.clicked.connect(self.open_settings)
+
         mouse_layout.addWidget(self.mouse_checkbox)
+        mouse_layout.addWidget(self.settings_button)
 
         mouse_group.setLayout(mouse_layout)
         control_panel.addWidget(mouse_group)
-
-        # Настройки
-        settings_group = QGroupBox("Настройки")
-        settings_layout = QFormLayout()
-
-        self.sensitivity_slider = QSlider(Qt.Horizontal)
-        self.sensitivity_slider.setMinimum(1)
-        self.sensitivity_slider.setMaximum(20)
-        self.sensitivity_slider.setValue(10)
-        self.sensitivity_slider.valueChanged.connect(self.change_sensitivity)
-
-        self.sensitivity_label = QLabel("1.0")
-
-        sensitivity_row = QHBoxLayout()
-        sensitivity_row.addWidget(self.sensitivity_slider)
-        sensitivity_row.addWidget(self.sensitivity_label)
-
-        settings_layout.addRow("Чувствительность:", sensitivity_row)
-
-        self.smoothing_slider = QSlider(Qt.Horizontal)
-        self.smoothing_slider.setMinimum(1)
-        self.smoothing_slider.setMaximum(15)
-        self.smoothing_slider.setValue(self.config.smoothing)
-        self.smoothing_slider.valueChanged.connect(self.change_smoothing)
-
-        self.smoothing_label = QLabel(str(self.config.smoothing))
-
-        smoothing_row = QHBoxLayout()
-        smoothing_row.addWidget(self.smoothing_slider)
-        smoothing_row.addWidget(self.smoothing_label)
-
-        settings_layout.addRow("Сглаживание:", smoothing_row)
-
-        self.click_distance_slider = QSlider(Qt.Horizontal)
-        self.click_distance_slider.setMinimum(10)
-        self.click_distance_slider.setMaximum(80)
-        self.click_distance_slider.setValue(self.config.click_distance)
-        self.click_distance_slider.valueChanged.connect(self.change_click_distance)
-
-        self.click_distance_label = QLabel(str(self.config.click_distance))
-
-        click_row = QHBoxLayout()
-        click_row.addWidget(self.click_distance_slider)
-        click_row.addWidget(self.click_distance_label)
-
-        settings_layout.addRow("Порог клика:", click_row)
-
-        # Горизонтальная граница активной области
-        self.margin_x_slider = QSlider(Qt.Horizontal)
-        self.margin_x_slider.setMinimum(0)
-        self.margin_x_slider.setMaximum(250)
-        self.margin_x_slider.setValue(self.config.frame_margin_x)
-        self.margin_x_slider.valueChanged.connect(self.change_margin_x)
-
-        self.margin_x_label = QLabel(str(self.config.frame_margin_x))
-
-        margin_x_row = QHBoxLayout()
-        margin_x_row.addWidget(self.margin_x_slider)
-        margin_x_row.addWidget(self.margin_x_label)
-
-        settings_layout.addRow("Граница X:", margin_x_row)
-
-        # Вертикальная граница активной области
-        self.margin_y_slider = QSlider(Qt.Horizontal)
-        self.margin_y_slider.setMinimum(0)
-        self.margin_y_slider.setMaximum(200)
-        self.margin_y_slider.setValue(self.config.frame_margin_y)
-        self.margin_y_slider.valueChanged.connect(self.change_margin_y)
-
-        self.margin_y_label = QLabel(str(self.config.frame_margin_y))
-
-        margin_y_row = QHBoxLayout()
-        margin_y_row.addWidget(self.margin_y_slider)
-        margin_y_row.addWidget(self.margin_y_label)
-
-        settings_layout.addRow("Граница Y:", margin_y_row)
-
-        settings_group.setLayout(settings_layout)
-        control_panel.addWidget(settings_group)
 
         # Описание жестов
         info_group = QGroupBox("Жесты")
@@ -189,8 +277,10 @@ class MainWindow(QMainWindow):
 
         info_label = QLabel(
             "Движение указательного пальца — перемещение курсора\n"
-            "Щипок большим и указательным пальцем — левый клик\n\n"
-            "Для Linux рекомендуется X11, так как Wayland может блокировать управление курсором."
+            "Большой + указательный палец — левый клик\n"
+            "Указательный + мизинец подняты — правый клик\n"
+            "Указательный + средний подняты — прокрутка\n\n"
+            "Настройки жестов доступны по кнопке «Настройки»."
         )
         info_label.setWordWrap(True)
 
@@ -231,6 +321,14 @@ class MainWindow(QMainWindow):
         self.stop_button.setEnabled(False)
         self.camera_spinbox.setEnabled(True)
 
+    def open_settings(self):
+        dialog = SettingsDialog(
+            config=self.config,
+            camera_worker=self.camera_worker,
+            parent=self
+        )
+        dialog.exec()
+
     def update_frame(self, image):
         pixmap = QPixmap.fromImage(image)
 
@@ -251,31 +349,6 @@ class MainWindow(QMainWindow):
 
     def toggle_mouse_control(self, state):
         self.config.mouse_enabled = state == Qt.Checked.value
-
-    def change_sensitivity(self, value):
-        self.config.sensitivity = value / 10
-        self.sensitivity_label.setText(str(self.config.sensitivity))
-
-    def change_smoothing(self, value):
-        self.config.smoothing = value
-        self.smoothing_label.setText(str(value))
-
-    def change_click_distance(self, value):
-        self.config.click_distance = value
-        self.click_distance_label.setText(str(value))
-
-        if self.camera_worker is not None:
-            self.camera_worker.gesture_detector.update_settings(
-                click_distance=value
-            )
-
-    def change_margin_x(self, value):
-        self.config.frame_margin_x = value
-        self.margin_x_label.setText(str(value))
-
-    def change_margin_y(self, value):
-        self.config.frame_margin_y = value
-        self.margin_y_label.setText(str(value))
 
     def closeEvent(self, event):
         self.stop_camera()

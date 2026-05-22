@@ -232,7 +232,7 @@ class GestureDetector:
                 else:
                     delta_y = self.prev_scroll_y - current_scroll_y
 
-                    scroll_amount = int(delta_y / 0.1)
+                    scroll_amount = int(delta_y / 3)
 
                     self.prev_scroll_y = current_scroll_y
 
